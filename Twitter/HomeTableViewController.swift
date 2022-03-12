@@ -12,11 +12,17 @@ class HomeTableViewController: UITableViewController {
     var tweetArray = [NSDictionary]()
     var numberTweet: Int!
     
+    let myRefreshControl = UIRefreshControl()
+    
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
         loadAPI()
+        
+        myRefreshControl.addTarget(self, action: #selector(loadAPI), for: .valueChanged)
+        
+        tableView.refreshControl = myRefreshControl
 
         // Uncomment the following line to preserve selection between presentations
         // self.clearsSelectionOnViewWillAppear = false
@@ -27,9 +33,34 @@ class HomeTableViewController: UITableViewController {
     // MARK: - Table view data source
     
     
-    func loadAPI() {
+    @objc func loadAPI() {
+        
+        numberTweet = 20
+        
         let myUrl = "https://api.twitter.com/1.1/statuses/home_timeline.json"
-        let params = ["count": 10]
+        let params = ["count": numberTweet]
+        
+        TwitterAPICaller.client?.getDictionariesRequest(url: myUrl, parameters: params, success: { (tweets: [NSDictionary]) in
+            print("success")
+            self.tweetArray.removeAll()
+            for tweet in tweets {
+                self.tweetArray.append(tweet)
+            }
+            
+            self.tableView.reloadData()
+            
+            self.myRefreshControl.endRefreshing()
+        }, failure: { Error in
+            print("error when getting tweets \(Error)")
+        })
+    }
+    
+    func loadMoreTweets() {
+        
+        numberTweet += 20
+        
+        let myUrl = "https://api.twitter.com/1.1/statuses/home_timeline.json"
+        let params = ["count": numberTweet]
         
         TwitterAPICaller.client?.getDictionariesRequest(url: myUrl, parameters: params, success: { (tweets: [NSDictionary]) in
             print("success")
@@ -42,7 +73,6 @@ class HomeTableViewController: UITableViewController {
         }, failure: { Error in
             print("error when getting tweets \(Error)")
         })
-        
     }
     
     @IBAction func onLogout(_ sender: Any) {
@@ -69,6 +99,12 @@ class HomeTableViewController: UITableViewController {
         }
         
         return cell
+    }
+    
+    override func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if indexPath.row + 1 == tweetArray.count {
+            loadMoreTweets()
+        }
     }
     
     override func numberOfSections(in tableView: UITableView) -> Int {
